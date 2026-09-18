@@ -2,29 +2,39 @@
 
 QiWire is an experimental Linux keylogger / keyboard input watcher written in Go.
 
-The project is primarily a systems-programming and software-engineering exercise focused on understanding the Linux input stack, keyboard event processing, XKB translation, and terminal user interfaces.
+The project is primarily a systems-programming and software-engineering exercise focused on understanding the Linux input stack, keyboard event processing, XKB translation, concurrency, and terminal user interfaces.
 
 ## Current prototype
 
 The current version:
 
-- reads keyboard events directly from `/dev/input/eventX` using the Linux evdev interface
-- converts raw Linux input events into internal key events
-- uses `libxkbcommon` to translate keycodes according to a configured keyboard layout
-- handles modifiers such as Shift and Caps Lock through XKB state
-- supports key repeat
-- reconstructs printable UTF-8 text
-- handles Enter and Backspace
-- displays captured input in a terminal UI
+* scans `/dev/input/event*` and detects keyboard-capable input devices
+* distinguishes typing-capable keyboard interfaces from media-only input interfaces using evdev capability queries
+* opens multiple detected keyboards simultaneously
+* reads raw Linux evdev events from each keyboard
+* merges keyboard events through Go goroutines and channels
+* converts Linux-specific input events into internal key events
+* uses `libxkbcommon` to translate keycodes according to a configured keyboard layout
+* handles modifiers such as Shift and Caps Lock through XKB state
+* supports key repeat
+* reconstructs printable UTF-8 text
+* handles Enter and Backspace
+* displays captured input in a terminal UI
 
 ## Architecture
 
 ```text
-/dev/input/eventX
+/dev/input/event*
         ↓
-LinuxInputProvider
+Keyboard Detector
         ↓
-KeyEvent
+Typing-capable keyboards
+        ↓
+LinuxInputProvider × N
+        ↓
+goroutines
+        ↓
+merged KeyEvent channel
         ↓
 XKBTranslator
         ↓
@@ -33,15 +43,15 @@ UTF-8 text
 TerminalDisplay
 ```
 
-The project currently targets Linux x86-64 and uses a manually selected input device and keyboard layout.
+The current prototype targets Linux x86-64 and uses a hard-coded XKB keyboard layout.
 
 ## Build
 
 Requirements:
 
-- Go
-- `libxkbcommon`
-- `pkg-config`
+* Go
+* `libxkbcommon`
+* `pkg-config`
 
 Build with:
 
@@ -49,7 +59,7 @@ Build with:
 go build -o qiwire .
 ```
 
-Run with sufficient permissions to read the selected `/dev/input/eventX` device:
+Run with sufficient permissions to access Linux input devices:
 
 ```bash
 sudo ./qiwire
@@ -57,7 +67,16 @@ sudo ./qiwire
 
 ## Status
 
-QiWire is experimental and under active development. The current implementation is intentionally small and focuses on validating the core input and translation pipeline before adding features such as automatic keyboard discovery, hotplug support, active Wayland layout detection, and additional platform backends.
+QiWire is experimental and under active development.
+
+The current implementation focuses on validating the core input pipeline before adding features such as:
+
+* active Wayland keyboard-layout detection
+* keyboard hotplug and disconnect handling
+* cleaner goroutine cancellation and shutdown
+* more robust physical-device identification
+* Unicode-safe editing behavior
+* additional platform backends for Windows and macOS
 
 ## Disclaimer
 
