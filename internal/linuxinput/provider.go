@@ -9,7 +9,6 @@ import (
 
 const (
 	inputEventSize = 24
-	evKey          = 0x01
 )
 
 type LinuxInputProvider struct {

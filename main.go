@@ -10,14 +10,12 @@ import (
 	"qiwire/internal/xkb"
 )
 
-const inputDevice = "/dev/input/event7"
-
 func main() {
-	provider, err := linuxinput.NewLinuxInputProvider(inputDevice)
+	manager, err := linuxinput.NewKeyboardManager()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer provider.Close()
+	defer manager.Close()
 
 	translator, err := xkb.NewXKBTranslator("fr")
 	if err != nil {
@@ -28,15 +26,12 @@ func main() {
 	model := terminal.New()
 	program := tea.NewProgram(model)
 
-	go func() {
-		for {
-			event, err := provider.ReadEvent()
-			if err != nil {
-				program.Quit()
-				return
-			}
+	manager.Start()
 
+	go func() {
+		for event := range manager.Events() {
 			text := translator.Translate(event)
+
 			if text != "" {
 				program.Send(terminal.TextMsg(text))
 			}
