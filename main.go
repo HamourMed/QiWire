@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"qiwire/internal/layout"
 	"qiwire/internal/linuxinput"
 	"qiwire/internal/terminal"
 	"qiwire/internal/xkb"
@@ -17,9 +18,14 @@ func main() {
 	}
 	defer manager.Close()
 
-	translator, err := xkb.NewXKBTranslator("fr")
+	keyboardConfig, err := layout.Detect()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to detect keyboard layout: %v", err)
+	}
+
+	translator, err := xkb.NewXKBTranslator(keyboardConfig)
+	if err != nil {
+		log.Fatalf("failed to initialize XKB: %v", err)
 	}
 	defer translator.Close()
 

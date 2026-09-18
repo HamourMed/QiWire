@@ -8,18 +8,19 @@ The project is primarily a systems-programming and software-engineering exercise
 
 The current version:
 
-* scans `/dev/input/event*` and detects keyboard-capable input devices
-* distinguishes typing-capable keyboard interfaces from media-only input interfaces using evdev capability queries
+* scans `/dev/input/event*` and detects typing-capable keyboard devices
+* distinguishes normal keyboard interfaces from media-only input interfaces using evdev capability queries
 * opens multiple detected keyboards simultaneously
 * reads raw Linux evdev events from each keyboard
 * merges keyboard events through Go goroutines and channels
-* converts Linux-specific input events into internal key events
-* uses `libxkbcommon` to translate keycodes according to a configured keyboard layout
-* handles modifiers such as Shift and Caps Lock through XKB state
+* converts Linux-specific events into internal `KeyEvent` values
+* detects the system XKB configuration from Linux keyboard configuration files
+* loads XKB model, layout, variant, and options into `libxkbcommon`
+* handles modifiers such as Shift, Caps Lock, and AltGr through XKB state
 * supports key repeat
 * reconstructs printable UTF-8 text
 * handles Enter and Backspace
-* displays captured input in a terminal UI
+* displays captured input in a scrollable terminal UI
 
 ## Architecture
 
@@ -43,7 +44,7 @@ UTF-8 text
 TerminalDisplay
 ```
 
-The current prototype targets Linux x86-64 and uses a hard-coded XKB keyboard layout.
+Keyboard configuration is currently discovered from the system configuration, preferring `/etc/default/keyboard` when available and falling back to `/etc/vconsole.conf`.
 
 ## Build
 
@@ -65,18 +66,29 @@ Run with sufficient permissions to access Linux input devices:
 sudo ./qiwire
 ```
 
-## Status
+## Current limitations
 
-QiWire is experimental and under active development.
+QiWire currently targets Linux x86-64.
 
-The current implementation focuses on validating the core input pipeline before adding features such as:
+The current prototype does not yet handle:
+
+* active Wayland layout changes at runtime
+* keyboard hotplug and disconnect recovery
+* graceful cancellation of all input goroutines
+* robust physical-device grouping
+* full cross-platform input backends
+* complete console-keymap to XKB-layout conversion for every Linux configuration
+
+## Roadmap
+
+Planned improvements include:
 
 * active Wayland keyboard-layout detection
-* keyboard hotplug and disconnect handling
-* cleaner goroutine cancellation and shutdown
-* more robust physical-device identification
-* Unicode-safe editing behavior
-* additional platform backends for Windows and macOS
+* keyboard hotplug support
+* cleaner shutdown and error propagation
+* better physical keyboard identification
+* improved Unicode editing behavior
+* Windows and macOS input backends
 
 ## Disclaimer
 

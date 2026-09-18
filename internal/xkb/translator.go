@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"qiwire/internal/layout"
 	"qiwire/internal/linuxinput"
 )
 
@@ -21,21 +22,28 @@ type XKBTranslator struct {
 	state   *C.struct_xkb_state
 }
 
-func NewXKBTranslator(layout string) (*XKBTranslator, error) {
+func NewXKBTranslator(config layout.Config) (*XKBTranslator, error) {
 	ctx := C.xkb_context_new(C.XKB_CONTEXT_NO_FLAGS)
 	if ctx == nil {
 		return nil, fmt.Errorf("failed to create XKB context")
 	}
 
-	cLayout := C.CString(layout)
+	cModel := C.CString(config.Model)
+	cLayout := C.CString(config.Layout)
+	cVariant := C.CString(config.Variant)
+	cOptions := C.CString(config.Options)
+
+	defer C.free(unsafe.Pointer(cModel))
 	defer C.free(unsafe.Pointer(cLayout))
+	defer C.free(unsafe.Pointer(cVariant))
+	defer C.free(unsafe.Pointer(cOptions))
 
 	names := C.struct_xkb_rule_names{
 		rules:   nil,
-		model:   nil,
+		model:   cModel,
 		layout:  cLayout,
-		variant: nil,
-		options: nil,
+		variant: cVariant,
+		options: cOptions,
 	}
 
 	keymap := C.xkb_keymap_new_from_names(
@@ -43,9 +51,13 @@ func NewXKBTranslator(layout string) (*XKBTranslator, error) {
 		&names,
 		C.XKB_KEYMAP_COMPILE_NO_FLAGS,
 	)
+
 	if keymap == nil {
 		C.xkb_context_unref(ctx)
-		return nil, fmt.Errorf("failed to create XKB keymap for layout %q", layout)
+		return nil, fmt.Errorf(
+			"failed to create XKB keymap for layout %q",
+			config.Layout,
+		)
 	}
 
 	state := C.xkb_state_new(keymap)
